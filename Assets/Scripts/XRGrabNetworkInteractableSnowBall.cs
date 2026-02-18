@@ -5,11 +5,11 @@ using UnityEngine.XR.Interaction.Toolkit;
 using Photon.Pun;
 
 
-public class XRGrabNetworkInteractableSnowBall : XRGrabInteractable
+public class XRGrabNetworkInteractableSnowBall : UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable
 {
 	
 	private Rigidbody rigidBody;
-    private XRBaseInteractor grabInteractor;
+    private UnityEngine.XR.Interaction.Toolkit.Interactors.XRBaseInteractor grabInteractor;
     private Vector3 interactorVelocity;
     private Vector3 interactorAngularVelocity;
 	//[Tooltip("The projectile that's created")]
@@ -20,7 +20,7 @@ public class XRGrabNetworkInteractableSnowBall : XRGrabInteractable
 
     [Tooltip("The speed at which the projectile is launched")]
     public float launchSpeed = .0010f;
-	 private XRBaseInteractor currentInteractor;
+	 private UnityEngine.XR.Interaction.Toolkit.Interactors.XRBaseInteractor currentInteractor;
 	
 	private PhotonView photonView;
     // Start is called before the first frame update
@@ -64,7 +64,7 @@ public class XRGrabNetworkInteractableSnowBall : XRGrabInteractable
 		
 		base.OnSelectEntering(args);
 		photonView.RequestOwnership();
-		currentInteractor = args.interactorObject as XRBaseInteractor;
+		currentInteractor = args.interactorObject as UnityEngine.XR.Interaction.Toolkit.Interactors.XRBaseInteractor;
 	 
 
         // Get and log the forward direction of the hand that grabbed the object
@@ -75,7 +75,7 @@ public class XRGrabNetworkInteractableSnowBall : XRGrabInteractable
 	protected override void OnSelectExited(SelectExitEventArgs args)
     {
         base.OnSelectExited(args);
-		currentInteractor = args.interactorObject as XRBaseInteractor;
+		currentInteractor = args.interactorObject as UnityEngine.XR.Interaction.Toolkit.Interactors.XRBaseInteractor;
        Vector3 handForward = currentInteractor.transform.forward;
 	 Debug.Log("Hand forwards direction on release: " + handForward);
 		GameObject obj = GameObject.Find(gameObject.name);
