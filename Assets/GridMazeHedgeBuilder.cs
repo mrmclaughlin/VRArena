@@ -52,6 +52,7 @@ private GameObject triggerMarkerObj;
 
 
 
+
     [Tooltip("Place the rebuild trigger this many CELLS before the goal (keeps it inside the maze).")]
     [Min(1)]
     public int triggerCellsBeforeGoal = 3;
@@ -113,7 +114,10 @@ private GameObject triggerMarkerObj;
     public bool spawnSolutionMarkers = false;
     public float markerHeight = 0.1f;
     public GameObject oldMarker;
-
+[Header("Old marker extinguish (HMD-based)")]
+public float oldMarkerExtinguishRadius = 0.8f;
+public float oldMarkerExtinguishCooldown = 0.25f;
+public bool oldMarkerExtinguishOnce = true;
     [Header("Build Options")]
     public bool clearBeforeBuild = true;
     public bool buildOnStart = false;
@@ -292,7 +296,7 @@ private void Shuffle(List<AudioClip> list)
             Debug.LogError("GridMazeHedgeBuilder: Assign gymCenter, worldRoot, hedgePrefab.");
             return;
         }
-
+        RelightAllOldMarkers();
         if (clearBeforeBuild) ClearWorldRoot();
 
         if (hmd == null && Camera.main != null)
@@ -914,32 +918,42 @@ private void Shuffle(List<AudioClip> list)
 }
 
 
-    // ---------------- Old primitive markers (optional) ----------------
-    void SpawnSolutionMarkers()
-    {
-        for (int i = 0; i < solutionWorldPoints.Count; i++)
-        {
-            GameObject s = Instantiate(oldMarker);
-            s.name = $"SolutionMarker_{i}";
-            s.transform.SetParent(worldRoot, true);
-            s.transform.position = solutionWorldPoints[i] + Vector3.up * markerHeight;
-            s.transform.localScale = Vector3.one * 0.15f;
+private void RelightAllOldMarkers()
+{
+    if (worldRoot == null) return;
+    var markers = worldRoot.GetComponentsInChildren<OldMarkerExtinguish>(true);
+    foreach (var m in markers) m.Relight();
+}
 
-            var col = s.GetComponent<Collider>();
-#if UNITY_EDITOR
-            if (!Application.isPlaying)
-            {
-                if (col) DestroyImmediate(col);
-            }
-            else
-            {
-                if (col) Destroy(col);
-            }
-#else
-            if (col) Destroy(col);
-#endif
+
+    // ---------------- Old primitive markers (optional) ----------------
+   void SpawnSolutionMarkers()
+{
+    if (hmd == null && Camera.main != null)
+        hmd = Camera.main.transform;
+
+    for (int i = 0; i < solutionWorldPoints.Count; i++)
+    {
+        GameObject s = Instantiate(oldMarker);
+        s.name = $"SolutionMarker_{i}";
+        s.transform.SetParent(worldRoot, true);
+        s.transform.position = solutionWorldPoints[i] + Vector3.up * markerHeight;
+        s.transform.localScale = Vector3.one * 0.15f;
+
+        // Hook the marker to HMD-based extinguish logic
+        var ext = s.GetComponent<OldMarkerExtinguish>();
+if (ext == null)
+{
+    Debug.LogWarning("OldMarker prefab missing OldMarkerExtinguish script.");
+}
+
+        else
+        {
+            Debug.LogWarning("OldMarker prefab missing OldMarkerExtinguish script.");
         }
     }
+}
+
 
     // ---------------- Debug drawing ----------------
     void OnDrawGizmosSelected()
