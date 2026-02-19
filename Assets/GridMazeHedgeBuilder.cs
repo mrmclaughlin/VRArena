@@ -150,6 +150,18 @@ private GameObject triggerMarkerObj;
     private bool useDesiredFirstStep = false;
     private Vector2Int desiredFirstStepDir; // one of (0,1),(1,0),(0,-1),(-1,0)
 
+
+// --- Sound sequence state (persists across rebuilds) ---
+[SerializeField] private bool reshuffleEachLoop = true;
+
+private List<AudioClip> _soundBag = new List<AudioClip>();
+private int _soundBagIndex = 0;
+
+// used to detect if the clip list changed so we can rebuild the bag safely
+private int _soundBagSignature = 0;
+
+
+
     void Start()
     {
         if (!Application.isPlaying) return;
@@ -203,6 +215,71 @@ public void ClearWorldRoot()
 #else
         Destroy(child.gameObject);
 #endif
+    }
+}
+private int ComputeClipSignature(List<AudioClip> clips)
+{
+    unchecked
+    {
+        int hash = 17;
+        hash = hash * 31 + (clips?.Count ?? 0);
+        if (clips != null)
+        {
+            for (int i = 0; i < clips.Count; i++)
+                hash = hash * 31 + (clips[i] ? clips[i].GetInstanceID() : 0);
+        }
+        return hash;
+    }
+}
+
+private void EnsureSoundBag()
+{
+    if (pathSoundClips == null || pathSoundClips.Count == 0)
+    {
+        _soundBag.Clear();
+        _soundBagIndex = 0;
+        _soundBagSignature = 0;
+        return;
+    }
+
+    int sig = ComputeClipSignature(pathSoundClips);
+
+    // If clips changed (count/order/references), rebuild bag and start clean.
+    if (_soundBag.Count == 0 || sig != _soundBagSignature)
+    {
+        _soundBagSignature = sig;
+        _soundBag = new List<AudioClip>(pathSoundClips);
+        Shuffle(_soundBag);
+        _soundBagIndex = 0;
+    }
+
+    // If we reached the end, loop.
+    if (_soundBagIndex >= _soundBag.Count)
+    {
+        _soundBagIndex = 0;
+        if (reshuffleEachLoop) Shuffle(_soundBag);
+    }
+}
+
+private AudioClip GetNextPathClip_NoRepeats()
+{
+    if (!loopSoundClipList) return null;
+
+    EnsureSoundBag();
+    if (_soundBag.Count == 0) return null;
+
+    AudioClip clip = _soundBag[_soundBagIndex];
+    _soundBagIndex++;
+    return clip;
+}
+
+private void Shuffle(List<AudioClip> list)
+{
+    // Fisher-Yates
+    for (int i = list.Count - 1; i > 0; i--)
+    {
+        int j = Random.Range(0, i + 1);
+        (list[i], list[j]) = (list[j], list[i]);
     }
 }
 
@@ -765,7 +842,7 @@ public void ClearWorldRoot()
         int n = Mathf.Max(1, solutionBallEveryNthCell);
 
         int placedBallCount = 0;
-        int soundClipIndex = 0;
+        //int soundClipIndex = 0;
 
         for (int i = 0; i < solutionWorldPoints.Count; i++)
         {
@@ -794,20 +871,12 @@ public void ClearWorldRoot()
             {
                 if (pathSoundClips != null && pathSoundClips.Count > 0)
                 {
-                    AudioClip chosen = null;
+                    if (pathSoundClips != null && pathSoundClips.Count > 0)
+{
+    AudioClip chosen = GetNextPathClip_NoRepeats();
+    if (chosen != null) AddSoundTriggerToOrb(orb, chosen);
+}
 
-                    if (soundClipIndex < pathSoundClips.Count)
-                    {
-                        chosen = pathSoundClips[soundClipIndex];
-                        soundClipIndex++;
-                    }
-                    else if (loopSoundClipList)
-                    {
-                        chosen = pathSoundClips[soundClipIndex % pathSoundClips.Count];
-                        soundClipIndex++;
-                    }
-
-                    if (chosen != null) AddSoundTriggerToOrb(orb, chosen);
                 }
             }
         }

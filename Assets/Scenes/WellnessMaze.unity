@@ -736,7 +736,7 @@ PrefabInstance:
     - target: {fileID: 6598815579406187037, guid: 18ddb545287c546e19cc77dc9fbb2189,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -5464,13 +5464,13 @@ AudioSource:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 566161896}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 8300000, guid: 4ae04a74ca3423d4e8b1f347bf60a4c8, type: 3}
   m_PlayOnAwake: 1
-  m_Volume: 0.568
+  m_Volume: 0.038
   m_Pitch: 1
   Loop: 1
   Mute: 0
@@ -29158,10 +29158,10 @@ MonoBehaviour:
   randomizeEntranceExit: 0
   entranceX: 7
   exitX: 2
-  rebuildsBeforeFinalEnd: 2
+  rebuildsBeforeFinalEnd: 4
   showSegmentTriggerMarker: 0
-  triggerMarkerHeight: 0.6
-  triggerMarkerBaseRadius: 0.25
+  triggerMarkerHeight: 10
+  triggerMarkerBaseRadius: 0.5
   triggerCellsBeforeGoal: 2
   maxDirectionMatchAttempts: 40
   enforceDirectionContinuity: 1
@@ -29180,23 +29180,38 @@ MonoBehaviour:
   enableSoundTriggersOnSolutionBalls: 1
   soundTriggerEveryNthBall: 1
   pathSoundClips:
-  - {fileID: 8300000, guid: ffcac3d6adf3c4a5a9fceb69ed040b5f, type: 3}
-  - {fileID: 8300000, guid: 73fe6f8dbb7a64c96a1d52f467088b5d, type: 3}
-  - {fileID: 8300000, guid: 1b706adc9022a41ab90c83849d16c760, type: 3}
-  - {fileID: 8300000, guid: fdb8a3585af1e45918bc4babd167b4eb, type: 3}
-  - {fileID: 8300000, guid: 088ba1df0d9c04f62b913b155a14cd10, type: 3}
-  - {fileID: 8300000, guid: f3c16f48623484a42b8624861a87ca11, type: 3}
+  - {fileID: 8300000, guid: ac540c133394977498f08cd4a325c910, type: 3}
+  - {fileID: 8300000, guid: cb7807a7cee45d34cbd5c55d89260ec7, type: 3}
+  - {fileID: 8300000, guid: 2eff0df171877b34f8085740ccc370c0, type: 3}
+  - {fileID: 8300000, guid: 8cb4ac5e6ba842b46910a322f1324333, type: 3}
+  - {fileID: 8300000, guid: e4a19ef303b89ef4cbac90d2c9990b99, type: 3}
+  - {fileID: 8300000, guid: 22019ec3a05e2f94fb431d77333ac8b0, type: 3}
+  - {fileID: 8300000, guid: 349aa266ac9d4a64e869ca0054516166, type: 3}
+  - {fileID: 8300000, guid: f9a2cefb320f8d647b601c26935a0f5b, type: 3}
+  - {fileID: 8300000, guid: 50fc2cb291da55b43b5d61d35f0bd2d9, type: 3}
+  - {fileID: 8300000, guid: 961da43282778df4caea57d3d5fa1edb, type: 3}
+  - {fileID: 8300000, guid: 06f48108557cc0d4eb4c5b7c832420b2, type: 3}
+  - {fileID: 8300000, guid: f95031dd2de4f4a4699488dac6598e9f, type: 3}
+  - {fileID: 8300000, guid: 5ff5b4d6d6d43264194c0a01581c1d0e, type: 3}
+  - {fileID: 8300000, guid: 49866499dfb19c24483ca7dc12f9bafe, type: 3}
+  - {fileID: 8300000, guid: 5b27f1e7e14c19e4a8336a217c6f6e97, type: 3}
+  - {fileID: 8300000, guid: 23a42955b3d51d9459f6f595e11f245d, type: 3}
+  - {fileID: 8300000, guid: 00b38a34f9afd9a4ab0e3c4a782604b8, type: 3}
+  - {fileID: 8300000, guid: ec5c996d332fa9f438fddba8f0c358a9, type: 3}
+  - {fileID: 8300000, guid: 04f38de69941bb04dadcb131755fa50c, type: 3}
+  - {fileID: 8300000, guid: 99e14dbfb0a8132408aba0eed9683f81, type: 3}
   loopSoundClipList: 1
   soundVolume: 1
   soundTriggerRadius: 2
   soundTriggerOneShot: 0
   soundTriggerCooldownSeconds: 1.5
   spawnSolutionMarkers: 1
-  markerHeight: 0.034
+  markerHeight: 1
   oldMarker: {fileID: 392279332332924750, guid: 1d21777a9fb934b409c129b5dc040ebc,
     type: 3}
   clearBeforeBuild: 1
   buildOnStart: 1
+  reshuffleEachLoop: 0
 --- !u!1 &2132620032
 GameObject:
   m_ObjectHideFlags: 0
