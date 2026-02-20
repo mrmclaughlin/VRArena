@@ -7782,7 +7782,7 @@ PrefabInstance:
     - target: {fileID: 6598815579406187037, guid: 18ddb545287c546e19cc77dc9fbb2189,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -166366,6 +166366,19 @@ MonoBehaviour:
   randomizeEntranceExit: 0
   entranceX: 7
   exitX: 2
+  rebuildsBeforeFinalEnd: 5
+  showSegmentTriggerMarker: 1
+  triggerMarkerHeight: 0.6
+  triggerMarkerBaseRadius: 0.25
+  triggerCellsBeforeGoal: 3
+  maxDirectionMatchAttempts: 40
+  enforceDirectionContinuity: 1
+  blockOuterOpeningsUntilFinal: 1
+  openEntranceOnFirstBuild: 1
+  rebuildCooldownSeconds: 1
+  rebuildDelaySeconds: 0.05
+  segmentTriggerSize: {x: 1.2, y: 2.2, z: 1.2}
+  hmd: {fileID: 920921511}
   drawSolutionPath: 1
   drawCellCenters: 1
   solutionBallPrefab: {fileID: 5519246812859590405}
@@ -166386,11 +166399,16 @@ MonoBehaviour:
   soundTriggerRadius: 0.6
   soundTriggerOneShot: 0
   soundTriggerCooldownSeconds: 1.5
-  hmd: {fileID: 920921511}
   spawnSolutionMarkers: 1
   markerHeight: 0.01
+  oldMarker: {fileID: 392279332332924750, guid: 1d21777a9fb934b409c129b5dc040ebc,
+    type: 3}
+  oldMarkerExtinguishRadius: 0.8
+  oldMarkerExtinguishCooldown: 0.25
+  oldMarkerExtinguishOnce: 1
   clearBeforeBuild: 1
   buildOnStart: 1
+  reshuffleEachLoop: 1
 --- !u!1 &2129791750
 GameObject:
   m_ObjectHideFlags: 0
