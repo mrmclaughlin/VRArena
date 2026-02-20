@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -5,123 +6,287 @@ using UnityEngine;
 public class GridMazeHedgeBuilder : MonoBehaviour
 {
     [Header("References")]
-    public Transform gymCenter;      // Center of the play area
-    public Transform worldRoot;      // Parent for spawned hedges
-    public GameObject hedgePrefab;   // 1.5m long hedge segment (pivot centered)
+    public Transform gymCenter;
+    public Transform worldRoot;
+    public GameObject hedgePrefab;
 
     [Header("Prefab orientation")]
     [Tooltip("Enable if hedge LENGTH runs along local X. Disable if along local Z.")]
     public bool hedgeLengthAlongLocalX = true;
 
     [Header("Geometry (meters)")]
-    public float cellSize = 1.5f;          // IMPORTANT: use 1.5 for your 1m corridor result
+    public float cellSize = 1.5f;
     public float footprintWidth = 24f;
     public float footprintLength = 15f;
 
     [Header("Maze shape")]
-    [Tooltip("Extra empty margin around the maze footprint (meters).")]
     public float outerMargin = 0.3f;
 
-    [Tooltip("Remove some dead ends to feel more 'wandering' than 'puzzle'. 0 = perfect maze (one unique solution).")]
     [Range(0f, 0.5f)]
-    public float braidFactor = 0.0f; // NOTE: keep at 0 for 'only one solution' feel.
+    public float braidFactor = 0.0f;
 
-    [Header("Entrance / Exit")]
+    [Header("Endpoints (for the FINAL exit only)")]
     public bool randomizeEntranceExit = false;
 
-    [Tooltip("Entrance is on the SOUTH edge of this cell (x, y=0).")]
+    [Tooltip("Final entrance is SOUTH edge x cell (first segment only).")]
     public int entranceX = 0;
 
-    [Tooltip("Exit is on the NORTH edge of this cell (x, y=max).")]
+    [Tooltip("Final exit is NORTH edge x cell (final segment only).")]
     public int exitX = 0;
+
+    [Header("Segment chaining")]
+    [Tooltip("How many times to rebuild BEFORE the final open exit. Example: 5 means 5 rebuilds, then final maze with real exit.")]
+    [Min(0)]
+    public int rebuildsBeforeFinalEnd = 5;
+
+[Header("Debug: Segment Trigger Marker")]
+public bool showSegmentTriggerMarker = true;
+
+[Tooltip("Height of the debug cone marker.")]
+public float triggerMarkerHeight = 0.6f;
+
+[Tooltip("Base width of the debug cone marker.")]
+public float triggerMarkerBaseRadius = 0.25f;
+
+private GameObject triggerMarkerObj;
+
+
+
+
+    [Tooltip("Place the rebuild trigger this many CELLS before the goal (keeps it inside the maze).")]
+    [Min(1)]
+    public int triggerCellsBeforeGoal = 3;
+
+    [Tooltip("Try up to this many maze generations to match direction continuity.")]
+    [Min(1)]
+    public int maxDirectionMatchAttempts = 40;
+
+    [Tooltip("If true, we regenerate the maze until the next segment's first step matches the previous segment direction.")]
+    public bool enforceDirectionContinuity = true;
+
+    [Header("Blocking outer openings")]
+    [Tooltip("If true, only the very first entrance is open, and only the final exit is open. During segments, boundaries stay sealed.")]
+    public bool blockOuterOpeningsUntilFinal = true;
+
+    [Tooltip("If true, the entrance is open only on the first segment so players can enter from outside.")]
+    public bool openEntranceOnFirstBuild = true;
+
+    [Header("Rebuild timing")]
+    public float rebuildCooldownSeconds = 1.0f;
+    public float rebuildDelaySeconds = 0.05f;
+
+    [Header("Rebuild Trigger (HMD-based)")]
+    public Vector3 segmentTriggerSize = new Vector3(1.2f, 2.2f, 1.2f);
+
+    [Tooltip("Main Camera / HMD. If null, will try Camera.main at runtime.")]
+    public Transform hmd;
 
     [Header("Solution Path Debug (Scene Gizmos)")]
     public bool drawSolutionPath = true;
     public bool drawCellCenters = false;
 
     [Header("Solution Path Visual (In-Game)")]
-    [Tooltip("Prefab to place along the solution path (e.g., a glowing orb). Leave null to disable.")]
     public GameObject solutionBallPrefab;
-
-    [Tooltip("How high above the floor to place the solution balls.")]
     public float solutionBallHeight = 0.25f;
 
-    [Tooltip("Place a ball every Nth cell along the solution path. 1 = every cell, 2 = every other cell, etc.")]
     [Min(1)]
     public int solutionBallEveryNthCell = 2;
 
-    [Tooltip("Optional: also place balls on start and end regardless of N.")]
     public bool alwaysPlaceBallAtStartAndEnd = true;
 
     [Header("Solution Path Sound Triggers")]
     public bool enableSoundTriggersOnSolutionBalls = true;
 
-    [Tooltip("Play a sound trigger every Nth *placed* solution ball.")]
     [Min(1)]
     public int soundTriggerEveryNthBall = 3;
 
-    [Tooltip("Sound clips assigned in order to each trigger ball.")]
     public List<AudioClip> pathSoundClips = new List<AudioClip>();
-
-    [Tooltip("If true, after the last clip it wraps back to the first.")]
     public bool loopSoundClipList = false;
 
     [Range(0f, 1f)]
     public float soundVolume = 1f;
 
-    [Tooltip("Radius (meters) of the trigger zone around the ball.")]
     public float soundTriggerRadius = 0.6f;
-
-    [Tooltip("If true, the trigger plays only once per orb.")]
     public bool soundTriggerOneShot = true;
-
-    [Tooltip("Cooldown (seconds) to prevent rapid re-trigger near edges.")]
     public float soundTriggerCooldownSeconds = 1.5f;
 
-    [Tooltip("Main Camera / HMD. If null, will try Camera.main at runtime.")]
-    public Transform hmd;
-
     [Header("Old marker option (primitive spheres)")]
-    [Tooltip("Optional: drop small spheres along the solution path for debugging.")]
     public bool spawnSolutionMarkers = false;
     public float markerHeight = 0.1f;
-
+    public GameObject oldMarker;
+[Header("Old marker extinguish (HMD-based)")]
+public float oldMarkerExtinguishRadius = 0.8f;
+public float oldMarkerExtinguishCooldown = 0.25f;
+public bool oldMarkerExtinguishOnce = true;
     [Header("Build Options")]
     public bool clearBeforeBuild = true;
     public bool buildOnStart = false;
 
-    // Walls bitmask: 1=N, 2=E, 4=S, 8=W. Bit set => wall present.
+    // Walls bitmask: 1=N, 2=E, 4=S, 8=W
     private int[,] walls;
     private bool[,] visited;
 
     private int cellsX, cellsY;
-    private Vector3 origin; // bottom-left corner of maze (world space)
+    private Vector3 origin; // bottom-left in world
     private List<Vector3> solutionWorldPoints = new List<Vector3>();
 
-    // Container for solution balls so we can easily clear them
+    // Current path in cells (for trigger placement + direction)
+    private List<Vector2Int> solutionPathCells = new List<Vector2Int>();
+
+    // Container roots
     private Transform solutionBallRoot;
+
+    // Trigger object
+    private GameObject segmentTriggerObj;
+
+    // Endpoints locked
+    private int endpointA_SouthX;
+    private int endpointB_NorthX;
+
+    // Segment state
+    private int rebuildsDone = 0;
+    private float nextAllowedRebuildTime = -999f;
+
+    // Next build constraints
+    private bool useForcedStartCell = false;
+    private Vector2Int forcedStartCell;
+
+    private bool useDesiredFirstStep = false;
+    private Vector2Int desiredFirstStepDir; // one of (0,1),(1,0),(0,-1),(-1,0)
+
+
+// --- Sound sequence state (persists across rebuilds) ---
+[SerializeField] private bool reshuffleEachLoop = true;
+
+private List<AudioClip> _soundBag = new List<AudioClip>();
+private int _soundBagIndex = 0;
+
+// used to detect if the clip list changed so we can rebuild the bag safely
+private int _soundBagSignature = 0;
+
+
 
     void Start()
     {
         if (!Application.isPlaying) return;
-        if (buildOnStart) Build();
-    }
-
-    [ContextMenu("Clear WorldRoot")]
-    public void ClearWorldRoot()
-    {
-        if (worldRoot == null) return;
-
-        for (int i = worldRoot.childCount - 1; i >= 0; i--)
+        if (buildOnStart)
         {
-#if UNITY_EDITOR
-            if (!Application.isPlaying) DestroyImmediate(worldRoot.GetChild(i).gameObject);
-            else Destroy(worldRoot.GetChild(i).gameObject);
-#else
-            Destroy(worldRoot.GetChild(i).gameObject);
-#endif
+            InitializeEndpointsIfNeeded();
+            Build();
         }
     }
+
+    void InitializeEndpointsIfNeeded()
+    {
+        endpointA_SouthX = entranceX;
+        endpointB_NorthX = exitX;
+    }
+
+
+
+private Transform runtimeRoot;
+
+private Transform GetOrCreateRuntimeRoot()
+{
+    if (runtimeRoot != null) return runtimeRoot;
+    var t = worldRoot.Find("__Runtime");
+    if (t != null) runtimeRoot = t;
+    else
+    {
+        runtimeRoot = new GameObject("__Runtime").transform;
+        runtimeRoot.SetParent(worldRoot, true);
+    }
+    return runtimeRoot;
+}
+
+
+
+
+
+[ContextMenu("Clear WorldRoot")]
+public void ClearWorldRoot()
+{
+    if (worldRoot == null) return;
+
+    for (int i = worldRoot.childCount - 1; i >= 0; i--)
+    {
+        Transform child = worldRoot.GetChild(i);
+        if (child.name == "__Runtime") continue;
+
+#if UNITY_EDITOR
+        if (!Application.isPlaying) DestroyImmediate(child.gameObject);
+        else Destroy(child.gameObject);
+#else
+        Destroy(child.gameObject);
+#endif
+    }
+}
+private int ComputeClipSignature(List<AudioClip> clips)
+{
+    unchecked
+    {
+        int hash = 17;
+        hash = hash * 31 + (clips?.Count ?? 0);
+        if (clips != null)
+        {
+            for (int i = 0; i < clips.Count; i++)
+                hash = hash * 31 + (clips[i] ? clips[i].GetInstanceID() : 0);
+        }
+        return hash;
+    }
+}
+
+private void EnsureSoundBag()
+{
+    if (pathSoundClips == null || pathSoundClips.Count == 0)
+    {
+        _soundBag.Clear();
+        _soundBagIndex = 0;
+        _soundBagSignature = 0;
+        return;
+    }
+
+    int sig = ComputeClipSignature(pathSoundClips);
+
+    // If clips changed (count/order/references), rebuild bag and start clean.
+    if (_soundBag.Count == 0 || sig != _soundBagSignature)
+    {
+        _soundBagSignature = sig;
+        _soundBag = new List<AudioClip>(pathSoundClips);
+        Shuffle(_soundBag);
+        _soundBagIndex = 0;
+    }
+
+    // If we reached the end, loop.
+    if (_soundBagIndex >= _soundBag.Count)
+    {
+        _soundBagIndex = 0;
+        if (reshuffleEachLoop) Shuffle(_soundBag);
+    }
+}
+
+private AudioClip GetNextPathClip_NoRepeats()
+{
+    if (!loopSoundClipList) return null;
+
+    EnsureSoundBag();
+    if (_soundBag.Count == 0) return null;
+
+    AudioClip clip = _soundBag[_soundBagIndex];
+    _soundBagIndex++;
+    return clip;
+}
+
+private void Shuffle(List<AudioClip> list)
+{
+    // Fisher-Yates
+    for (int i = list.Count - 1; i > 0; i--)
+    {
+        int j = Random.Range(0, i + 1);
+        (list[i], list[j]) = (list[j], list[i]);
+    }
+}
+
 
     [ContextMenu("Build Grid Maze (Hedges)")]
     public void Build()
@@ -131,56 +296,214 @@ public class GridMazeHedgeBuilder : MonoBehaviour
             Debug.LogError("GridMazeHedgeBuilder: Assign gymCenter, worldRoot, hedgePrefab.");
             return;
         }
-
+        RelightAllOldMarkers();
         if (clearBeforeBuild) ClearWorldRoot();
 
-        // Compute how many cells fit
+        if (hmd == null && Camera.main != null)
+            hmd = Camera.main.transform;
+
+        // Compute cells
         float usableW = Mathf.Max(0.1f, footprintWidth - outerMargin * 2f);
         float usableL = Mathf.Max(0.1f, footprintLength - outerMargin * 2f);
 
         cellsX = Mathf.Max(2, Mathf.FloorToInt(usableW / cellSize));
         cellsY = Mathf.Max(2, Mathf.FloorToInt(usableL / cellSize));
 
-        // Center the maze within the footprint
         float mazeW = cellsX * cellSize;
         float mazeL = cellsY * cellSize;
 
         origin = gymCenter.position + new Vector3(-mazeW * 0.5f, 0f, -mazeL * 0.5f);
 
-        GeneratePerfectMaze(cellsX, cellsY);
-
-        // IMPORTANT: If you want only one solution, keep braidFactor = 0
-        if (braidFactor > 0f) BraidMaze(cellsX, cellsY, braidFactor);
-
-        // Choose entrance/exit
-        int ex, xx;
-        if (randomizeEntranceExit)
+        // Randomize endpoints once
+        if (randomizeEntranceExit && rebuildsDone == 0 && !useForcedStartCell)
         {
-            ex = Random.Range(0, cellsX);
-            xx = Random.Range(0, cellsX);
+            endpointA_SouthX = Random.Range(0, cellsX);
+            endpointB_NorthX = Random.Range(0, cellsX);
+        }
+
+        endpointA_SouthX = Mathf.Clamp(endpointA_SouthX, 0, cellsX - 1);
+        endpointB_NorthX = Mathf.Clamp(endpointB_NorthX, 0, cellsX - 1);
+
+        bool isFinalSegment = (rebuildsDone >= rebuildsBeforeFinalEnd);
+
+        // Decide start / goal
+        Vector2Int startCell;
+        if (useForcedStartCell)
+        {
+            startCell = ClampCell(forcedStartCell);
         }
         else
         {
-            ex = Mathf.Clamp(entranceX, 0, cellsX - 1);
-            xx = Mathf.Clamp(exitX, 0, cellsX - 1);
+            // First segment start is entrance on SOUTH edge
+            startCell = new Vector2Int(endpointA_SouthX, 0);
         }
 
-        // Ensure exactly one entrance and one exit by carving boundary openings:
-        CarveEntranceExit(ex, xx);
+        Vector2Int goalCell;
+        if (isFinalSegment)
+        {
+            // Final goal is the real exit on NORTH edge
+            goalCell = new Vector2Int(endpointB_NorthX, cellsY - 1);
+        }
+        else
+        {
+            // Intermediate goal: choose a far-ish boundary based on desired direction if we have one,
+            // otherwise default to NORTH edge to keep flow generally forward.
+            goalCell = PickIntermediateGoal(startCell);
+        }
 
-        // Build hedges for all walls
-        BuildWallsAsHedges(cellsX, cellsY, origin);
+        // Generate maze with retries until direction continuity matches (if requested)
+        int attempts = Mathf.Max(1, maxDirectionMatchAttempts);
+        bool built = false;
 
-        // Compute solution path from entrance cell to exit cell
-        ComputeSolutionPath(new Vector2Int(ex, 0), new Vector2Int(xx, cellsY - 1));
+        for (int a = 0; a < attempts; a++)
+        {
+            GeneratePerfectMaze(cellsX, cellsY);
+            if (braidFactor > 0f) BraidMaze(cellsX, cellsY, braidFactor);
 
-        // In-game visual solution balls (prefab)
+            // Boundary openings rules
+            bool openEntrance =
+                !blockOuterOpeningsUntilFinal ||
+                (!useForcedStartCell && rebuildsDone == 0 && openEntranceOnFirstBuild);
+
+            bool openExit =
+                !blockOuterOpeningsUntilFinal ||
+                isFinalSegment;
+
+            CarveSouthNorthOpenings(endpointA_SouthX, endpointB_NorthX, openEntrance, openExit);
+
+            // Compute solution
+            if (!ComputeSolutionPathCells(startCell, goalCell))
+                continue;
+
+            if (enforceDirectionContinuity && useDesiredFirstStep)
+            {
+                if (!DoesFirstStepMatchDesired(startCell))
+                    continue;
+            }
+
+            built = true;
+            break;
+        }
+
+        if (!built)
+        {
+            Debug.LogWarning("Failed to build a direction-matching maze within attempts. Building last attempt anyway.");
+            // Build at least something (one more time)
+            GeneratePerfectMaze(cellsX, cellsY);
+            if (braidFactor > 0f) BraidMaze(cellsX, cellsY, braidFactor);
+
+            bool openEntrance =
+                !blockOuterOpeningsUntilFinal ||
+                (!useForcedStartCell && rebuildsDone == 0 && openEntranceOnFirstBuild);
+
+            bool openExit =
+                !blockOuterOpeningsUntilFinal ||
+                isFinalSegment;
+
+            CarveSouthNorthOpenings(endpointA_SouthX, endpointB_NorthX, openEntrance, openExit);
+
+            ComputeSolutionPathCells(startCell, goalCell);
+        }
+
+        // Build walls
+        BuildWallsAsHedges(cellsX, cellsY);
+
+        // Convert solution cells -> world points
+        BuildSolutionWorldPointsFromCells();
+
+        // Balls + sounds
         SpawnSolutionBallsIfNeeded();
 
-        // Optional: old debug spheres
+        // Optional markers
         if (spawnSolutionMarkers) SpawnSolutionMarkers();
 
-        Debug.Log($"Grid maze built: {cellsX} x {cellsY} cells. EntranceX={ex}, ExitX={xx}");
+        // Place trigger:
+        // - If final segment: trigger is at the GOAL cell (acts like “real exit reached”)
+        // - Else: trigger is placed triggerCellsBeforeGoal cells before goal (interior)
+        PlaceSegmentTrigger(isFinalSegment);
+
+        // After a successful Build, consume one-time constraints:
+        // Start cell is now “where you are” for next segment, so we always force start after first trigger.
+        // Desired direction is set when trigger is hit.
+        useDesiredFirstStep = false;
+
+        Debug.Log($"Maze built. segment={rebuildsDone}/{rebuildsBeforeFinalEnd} final={isFinalSegment} start={startCell} goal={goalCell} pathLen={solutionPathCells.Count}");
+    }
+
+    // Called by trigger when player reaches the segment trigger
+    public void NotifyReachedSegmentTrigger()
+    {
+        if (!Application.isPlaying) return;
+
+        if (Time.time < nextAllowedRebuildTime) return;
+        nextAllowedRebuildTime = Time.time + rebuildCooldownSeconds;
+
+        bool isFinalSegment = (rebuildsDone >= rebuildsBeforeFinalEnd);
+        if (isFinalSegment)
+        {
+            Debug.Log("FINAL END reached (no rebuild).");
+            if (segmentTriggerObj != null) segmentTriggerObj.SetActive(false);
+            return;
+        }
+
+        // Capture: start cell for next segment = current trigger cell
+        Vector2Int triggerCell = GetCurrentTriggerCell();
+        forcedStartCell = triggerCell;
+        useForcedStartCell = true;
+
+        // Capture: desired first step direction = direction of the solution path AT the trigger
+        if (enforceDirectionContinuity)
+        {
+            Vector2Int dir = GetDirectionAtTriggerCell(triggerCell);
+            if (dir != Vector2Int.zero)
+            {
+                desiredFirstStepDir = dir;
+                useDesiredFirstStep = true;
+            }
+        }
+
+        rebuildsDone++;
+
+        StartCoroutine(RebuildAfterDelay());
+    }
+
+    private IEnumerator RebuildAfterDelay()
+    {
+        if (rebuildDelaySeconds > 0f)
+            yield return new WaitForSeconds(rebuildDelaySeconds);
+
+        Build();
+    }
+
+    // ---------------- Goal picking ----------------
+    Vector2Int PickIntermediateGoal(Vector2Int startCell)
+    {
+        // If we have a desired direction, pick a boundary in that direction.
+        // Otherwise default to NORTH edge.
+        Vector2Int dir = desiredFirstStepDir;
+        if (!useDesiredFirstStep) dir = Vector2Int.up;
+
+        // Prefer far boundaries to keep “length” feeling
+        if (dir == Vector2Int.up)
+        {
+            int x = Random.Range(0, cellsX);
+            return new Vector2Int(x, cellsY - 1);
+        }
+        if (dir == Vector2Int.down)
+        {
+            int x = Random.Range(0, cellsX);
+            return new Vector2Int(x, 0);
+        }
+        if (dir == Vector2Int.right)
+        {
+            int y = Random.Range(0, cellsY);
+            return new Vector2Int(cellsX - 1, y);
+        }
+        // left
+        {
+            int y = Random.Range(0, cellsY);
+            return new Vector2Int(0, y);
+        }
     }
 
     // ---------------- Maze generation ----------------
@@ -189,7 +512,6 @@ public class GridMazeHedgeBuilder : MonoBehaviour
         walls = new int[w, h];
         visited = new bool[w, h];
 
-        // start with all walls present
         for (int y = 0; y < h; y++)
         for (int x = 0; x < w; x++)
             walls[x, y] = 1 | 2 | 4 | 8;
@@ -240,31 +562,32 @@ public class GridMazeHedgeBuilder : MonoBehaviour
         int dx = b.x - a.x;
         int dy = b.y - a.y;
 
-        if (dx == 1) { walls[a.x, a.y] &= ~2; walls[b.x, b.y] &= ~8; }        // a east open
-        else if (dx == -1) { walls[a.x, a.y] &= ~8; walls[b.x, b.y] &= ~2; }  // a west open
-        else if (dy == 1) { walls[a.x, a.y] &= ~1; walls[b.x, b.y] &= ~4; }   // a north open
-        else if (dy == -1) { walls[a.x, a.y] &= ~4; walls[b.x, b.y] &= ~1; }  // a south open
+        if (dx == 1) { walls[a.x, a.y] &= ~2; walls[b.x, b.y] &= ~8; }
+        else if (dx == -1) { walls[a.x, a.y] &= ~8; walls[b.x, b.y] &= ~2; }
+        else if (dy == 1) { walls[a.x, a.y] &= ~1; walls[b.x, b.y] &= ~4; }
+        else if (dy == -1) { walls[a.x, a.y] &= ~4; walls[b.x, b.y] &= ~1; }
     }
 
-    // ---------------- Ensure only one entrance and one exit ----------------
-    void CarveEntranceExit(int entranceXCell, int exitXCell)
+    void CarveSouthNorthOpenings(int entranceXCell, int exitXCell, bool openEntrance, bool openExit)
     {
         for (int x = 0; x < cellsX; x++)
         {
-            walls[x, 0] |= 4;                 // bottom row must have South walls
-            walls[x, cellsY - 1] |= 1;        // top row must have North walls
+            walls[x, 0] |= 4;
+            walls[x, cellsY - 1] |= 1;
         }
         for (int y = 0; y < cellsY; y++)
         {
-            walls[0, y] |= 8;                 // left col must have West walls
-            walls[cellsX - 1, y] |= 2;        // right col must have East walls
+            walls[0, y] |= 8;
+            walls[cellsX - 1, y] |= 2;
         }
 
-        walls[entranceXCell, 0] &= ~4;            // remove South wall bit
-        walls[exitXCell, cellsY - 1] &= ~1;       // remove North wall bit
+        entranceXCell = Mathf.Clamp(entranceXCell, 0, cellsX - 1);
+        exitXCell = Mathf.Clamp(exitXCell, 0, cellsX - 1);
+
+        if (openEntrance) walls[entranceXCell, 0] &= ~4;
+        if (openExit) walls[exitXCell, cellsY - 1] &= ~1;
     }
 
-    // ---------------- Optional braiding (creates loops; can create multiple solutions) ----------------
     void BraidMaze(int w, int h, float factor)
     {
         for (int y = 0; y < h; y++)
@@ -295,21 +618,21 @@ public class GridMazeHedgeBuilder : MonoBehaviour
         }
     }
 
-    // ---------------- Build walls as hedges (no overlaps) ----------------
-    void BuildWallsAsHedges(int w, int h, Vector3 originWorld)
+    // ---------------- Build walls as hedges ----------------
+    void BuildWallsAsHedges(int w, int h)
     {
         for (int y = 0; y < h; y++)
         for (int x = 0; x < w; x++)
         {
             int m = walls[x, y];
 
-            Vector3 cellCenter = originWorld + new Vector3((x + 0.5f) * cellSize, 0f, (y + 0.5f) * cellSize);
+            Vector3 cellCenter = origin + new Vector3((x + 0.5f) * cellSize, 0f, (y + 0.5f) * cellSize);
             float half = cellSize * 0.5f;
 
-            if ((m & 1) != 0) SpawnWall(cellCenter + new Vector3(0f, 0f, half), Quaternion.identity);                 // N
-            if ((m & 2) != 0) SpawnWall(cellCenter + new Vector3(half, 0f, 0f), Quaternion.Euler(0f, 90f, 0f));       // E
-            if (y == 0 && (m & 4) != 0) SpawnWall(cellCenter + new Vector3(0f, 0f, -half), Quaternion.identity);      // S (outer)
-            if (x == 0 && (m & 8) != 0) SpawnWall(cellCenter + new Vector3(-half, 0f, 0f), Quaternion.Euler(0f, 90f, 0f)); // W (outer)
+            if ((m & 1) != 0) SpawnWall(cellCenter + new Vector3(0f, 0f, half), Quaternion.identity);
+            if ((m & 2) != 0) SpawnWall(cellCenter + new Vector3(half, 0f, 0f), Quaternion.Euler(0f, 90f, 0f));
+            if (y == 0 && (m & 4) != 0) SpawnWall(cellCenter + new Vector3(0f, 0f, -half), Quaternion.identity);
+            if (x == 0 && (m & 8) != 0) SpawnWall(cellCenter + new Vector3(-half, 0f, 0f), Quaternion.Euler(0f, 90f, 0f));
         }
     }
 
@@ -328,9 +651,10 @@ public class GridMazeHedgeBuilder : MonoBehaviour
         h.transform.SetPositionAndRotation(pos, rot);
     }
 
-    // ---------------- Solution path (unique) ----------------
-    void ComputeSolutionPath(Vector2Int start, Vector2Int goal)
+    // ---------------- Solution path cells + world points ----------------
+    bool ComputeSolutionPathCells(Vector2Int start, Vector2Int goal)
     {
+        solutionPathCells.Clear();
         solutionWorldPoints.Clear();
 
         var parent = new Dictionary<Vector2Int, Vector2Int>();
@@ -356,23 +680,23 @@ public class GridMazeHedgeBuilder : MonoBehaviour
             }
         }
 
-        if (!found)
-        {
-            Debug.LogWarning("No solution path found (unexpected for a perfect maze).");
-            return;
-        }
+        if (!found) return false;
 
-        var pathCells = new List<Vector2Int>();
         var p = goal;
-        pathCells.Add(p);
+        solutionPathCells.Add(p);
         while (p != start)
         {
             p = parent[p];
-            pathCells.Add(p);
+            solutionPathCells.Add(p);
         }
-        pathCells.Reverse();
+        solutionPathCells.Reverse();
+        return (solutionPathCells.Count >= 2);
+    }
 
-        foreach (var c in pathCells)
+    void BuildSolutionWorldPointsFromCells()
+    {
+        solutionWorldPoints.Clear();
+        foreach (var c in solutionPathCells)
             solutionWorldPoints.Add(CellCenterWorld(c.x, c.y));
     }
 
@@ -382,10 +706,10 @@ public class GridMazeHedgeBuilder : MonoBehaviour
         int y = c.y;
         int m = walls[x, y];
 
-        if ((m & 1) == 0 && y + 1 < cellsY) yield return new Vector2Int(x, y + 1); // N
-        if ((m & 2) == 0 && x + 1 < cellsX) yield return new Vector2Int(x + 1, y); // E
-        if ((m & 4) == 0 && y - 1 >= 0) yield return new Vector2Int(x, y - 1);     // S
-        if ((m & 8) == 0 && x - 1 >= 0) yield return new Vector2Int(x - 1, y);     // W
+        if ((m & 1) == 0 && y + 1 < cellsY) yield return new Vector2Int(x, y + 1);
+        if ((m & 2) == 0 && x + 1 < cellsX) yield return new Vector2Int(x + 1, y);
+        if ((m & 4) == 0 && y - 1 >= 0) yield return new Vector2Int(x, y - 1);
+        if ((m & 8) == 0 && x - 1 >= 0) yield return new Vector2Int(x - 1, y);
     }
 
     Vector3 CellCenterWorld(int x, int y)
@@ -393,24 +717,136 @@ public class GridMazeHedgeBuilder : MonoBehaviour
         return origin + new Vector3((x + 0.5f) * cellSize, 0f, (y + 0.5f) * cellSize);
     }
 
+    // ---------------- Direction continuity helpers ----------------
+    bool DoesFirstStepMatchDesired(Vector2Int startCell)
+    {
+        if (solutionPathCells.Count < 2) return false;
+        if (solutionPathCells[0] != startCell) return false;
+
+        Vector2Int step = solutionPathCells[1] - solutionPathCells[0];
+        return step == desiredFirstStepDir;
+    }
+
+    Vector2Int GetDirectionAtTriggerCell(Vector2Int triggerCell)
+    {
+        // Find triggerCell in path and return next step direction if possible
+        for (int i = 0; i < solutionPathCells.Count - 1; i++)
+        {
+            if (solutionPathCells[i] == triggerCell)
+                return solutionPathCells[i + 1] - solutionPathCells[i];
+        }
+        return Vector2Int.zero;
+    }
+
+    Vector2Int GetCurrentTriggerCell()
+    {
+        if (segmentTriggerObj == null) return forcedStartCell;
+        // We store it on the trigger component too (most reliable)
+        var t = segmentTriggerObj.GetComponent<MazeEndTrigger>();
+        if (t != null) return t.triggerCell;
+        return forcedStartCell;
+    }
+
+    Vector2Int ClampCell(Vector2Int c)
+    {
+        return new Vector2Int(Mathf.Clamp(c.x, 0, cellsX - 1), Mathf.Clamp(c.y, 0, cellsY - 1));
+    }
+
+   void PlaceSegmentTrigger(bool isFinalSegment)
+{
+    if (solutionPathCells == null || solutionPathCells.Count < 2) return;
+
+    int idx;
+    if (isFinalSegment)
+        idx = solutionPathCells.Count - 1; // at goal
+    else
+        idx = Mathf.Clamp(solutionPathCells.Count - 1 - triggerCellsBeforeGoal, 1, solutionPathCells.Count - 2);
+
+    Vector2Int triggerCell = solutionPathCells[idx];
+
+    // Put the trigger at the cell center, raised so the box is centered at head height
+    Vector3 triggerPos = CellCenterWorld(triggerCell.x, triggerCell.y) + Vector3.up * (segmentTriggerSize.y * 0.5f);
+
+    Transform rt = GetOrCreateRuntimeRoot();
+
+    // --- Create/Update Trigger ---
+    if (segmentTriggerObj == null)
+    {
+        segmentTriggerObj = new GameObject("MazeSegmentTrigger");
+        segmentTriggerObj.transform.SetParent(rt, true);
+
+        var bc = segmentTriggerObj.AddComponent<BoxCollider>();
+        bc.isTrigger = true;
+
+        var trig = segmentTriggerObj.AddComponent<MazeEndTrigger>();
+        trig.builder = this;
+    }
+
+    var box = segmentTriggerObj.GetComponent<BoxCollider>();
+    box.size = segmentTriggerSize;
+
+    var t = segmentTriggerObj.GetComponent<MazeEndTrigger>();
+    t.hmd = hmd;
+    t.cooldownSeconds = rebuildCooldownSeconds;
+    t.triggerCell = triggerCell;
+    t.ForceOutside(); // SUPER IMPORTANT after each move
+
+    segmentTriggerObj.transform.position = triggerPos;
+    segmentTriggerObj.SetActive(true);
+
+    // --- Create/Update Debug Cone Marker ---
+    if (showSegmentTriggerMarker)
+    {
+        if (triggerMarkerObj == null)
+        {
+            // Unity primitive "cone" doesn't exist, so we fake it:
+            // Use a Cylinder scaled to look like a cone-ish spike.
+            triggerMarkerObj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            triggerMarkerObj.name = "SegmentTriggerMarker_CONE";
+            triggerMarkerObj.transform.SetParent(rt, true);
+
+            // Remove collider so it doesn't interfere with anything
+            var c = triggerMarkerObj.GetComponent<Collider>();
+            if (c) Destroy(c);
+        }
+
+        // Place it at floor with tip pointing up:
+        // Cylinder pivot is center, so we lift by half-height.
+        float h = Mathf.Max(0.1f, triggerMarkerHeight);
+        float r = Mathf.Max(0.05f, triggerMarkerBaseRadius);
+
+        triggerMarkerObj.transform.position = new Vector3(triggerPos.x, origin.y + (h * 0.5f), triggerPos.z);
+
+        // Fake "cone": tiny top radius by flattening X/Z heavily and leaving Y tall doesn't actually taper.
+        // Best cheap illusion is: make it a thin tall spike. You’ll still see it clearly.
+        triggerMarkerObj.transform.localScale = new Vector3(r * 2f, h * 0.5f, r * 2f);
+
+        triggerMarkerObj.SetActive(true);
+    }
+    else
+    {
+        if (triggerMarkerObj != null) triggerMarkerObj.SetActive(false);
+    }
+
+    Debug.Log($"SegmentTrigger placed at cell {triggerCell} (idx {idx}/{solutionPathCells.Count - 1}) pos={triggerPos}");
+}
+
     // ---------------- In-game solution balls ----------------
     void SpawnSolutionBallsIfNeeded()
     {
         if (solutionBallPrefab == null) return;
         if (solutionWorldPoints == null || solutionWorldPoints.Count == 0) return;
 
-        // Create a container so they’re easy to find/clean
         solutionBallRoot = new GameObject("SolutionBalls").transform;
         solutionBallRoot.SetParent(worldRoot, true);
 
-        // Resolve HMD reference (runtime)
         if (hmd == null && Camera.main != null)
             hmd = Camera.main.transform;
 
         int n = Mathf.Max(1, solutionBallEveryNthCell);
 
-        int placedBallCount = 0;  // counts only balls actually spawned
-        int soundClipIndex = 0;   // steps through your sound list in order
+        int placedBallCount = 0;
+        //int soundClipIndex = 0;
 
         for (int i = 0; i < solutionWorldPoints.Count; i++)
         {
@@ -433,86 +869,91 @@ public class GridMazeHedgeBuilder : MonoBehaviour
 
             placedBallCount++;
 
-            // Every Nth *placed* ball gets a sound trigger
             if (enableSoundTriggersOnSolutionBalls &&
                 soundTriggerEveryNthBall > 0 &&
                 (placedBallCount % soundTriggerEveryNthBall == 0))
             {
-                // Do we have a clip to assign?
                 if (pathSoundClips != null && pathSoundClips.Count > 0)
                 {
-                    AudioClip chosen = null;
+                    if (pathSoundClips != null && pathSoundClips.Count > 0)
+{
+    AudioClip chosen = GetNextPathClip_NoRepeats();
+    if (chosen != null) AddSoundTriggerToOrb(orb, chosen);
+}
 
-                    if (soundClipIndex < pathSoundClips.Count)
-                    {
-                        chosen = pathSoundClips[soundClipIndex];
-                        soundClipIndex++;
-                    }
-                    else if (loopSoundClipList)
-                    {
-                        chosen = pathSoundClips[soundClipIndex % pathSoundClips.Count];
-                        soundClipIndex++;
-                    }
-
-                    if (chosen != null)
-                    {
-                        AddSoundTriggerToOrb(orb, chosen);
-                    }
                 }
             }
         }
     }
 
     void AddSoundTriggerToOrb(GameObject orb, AudioClip clip)
-    {
-        // Create a child trigger zone
-        GameObject zoneObj = new GameObject("OrbSoundZone");
-        zoneObj.transform.SetParent(orb.transform, false);
-        zoneObj.transform.localPosition = Vector3.zero;
+{
+    // Create a child trigger zone
+    GameObject zoneObj = new GameObject("OrbSoundZone");
+    zoneObj.transform.SetParent(orb.transform, false);
+    zoneObj.transform.localPosition = Vector3.zero;
 
-        // Sphere trigger
-        SphereCollider sc = zoneObj.AddComponent<SphereCollider>();
-        sc.isTrigger = true;
-        sc.radius = soundTriggerRadius;
+    // Sphere trigger
+    SphereCollider sc = zoneObj.AddComponent<SphereCollider>();
+    sc.isTrigger = true;
+    sc.radius = soundTriggerRadius;
 
-        // Audio source on the zone (3D sound centered on orb)
-        AudioSource a = zoneObj.AddComponent<AudioSource>();
-        a.playOnAwake = false;
-        a.spatialBlend = 1f;
+    // Audio source on the zone (3D sound centered on orb)
+    AudioSource a = zoneObj.AddComponent<AudioSource>();
+    a.playOnAwake = false;
+    a.spatialBlend = 1f;
+    a.clip = clip;                 // ✅ make sure a clip is assigned
+    a.volume = soundVolume;        // ✅ make sure volume is assigned
+    a.rolloffMode = AudioRolloffMode.Logarithmic;
+    a.minDistance = 0.25f;
+    a.maxDistance = 12f;
 
-        // HMD-based trigger script
-        HmdSoundZone hmdZone = zoneObj.AddComponent<HmdSoundZone>();
-        hmdZone.Init(hmd, clip, soundVolume, soundTriggerOneShot, soundTriggerCooldownSeconds);
-    }
+    // Ensure we have an HMD reference every build
+    if (hmd == null && Camera.main != null)
+        hmd = Camera.main.transform;
+
+    // HMD-based trigger script
+    HmdSoundZone hmdZone = zoneObj.AddComponent<HmdSoundZone>();
+    hmdZone.Init(hmd, clip, soundVolume, soundTriggerOneShot, soundTriggerCooldownSeconds);
+}
+
+
+private void RelightAllOldMarkers()
+{
+    if (worldRoot == null) return;
+    var markers = worldRoot.GetComponentsInChildren<OldMarkerExtinguish>(true);
+    foreach (var m in markers) m.Relight();
+}
+
 
     // ---------------- Old primitive markers (optional) ----------------
-    void SpawnSolutionMarkers()
-    {
-        for (int i = 0; i < solutionWorldPoints.Count; i++)
-        {
-            GameObject s = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            s.name = $"SolutionMarker_{i}";
-            s.transform.SetParent(worldRoot, true);
-            s.transform.position = solutionWorldPoints[i] + Vector3.up * markerHeight;
-            s.transform.localScale = Vector3.one * 0.15f;
+   void SpawnSolutionMarkers()
+{
+    if (hmd == null && Camera.main != null)
+        hmd = Camera.main.transform;
 
-#if UNITY_EDITOR
-            if (!Application.isPlaying)
-            {
-                var col = s.GetComponent<Collider>();
-                if (col) DestroyImmediate(col);
-            }
-            else
-            {
-                var col = s.GetComponent<Collider>();
-                if (col) Destroy(col);
-            }
-#else
-            var col2 = s.GetComponent<Collider>();
-            if (col2) Destroy(col2);
-#endif
+    for (int i = 0; i < solutionWorldPoints.Count; i++)
+    {
+        GameObject s = Instantiate(oldMarker);
+        s.name = $"SolutionMarker_{i}";
+        s.transform.SetParent(worldRoot, true);
+        s.transform.position = solutionWorldPoints[i] + Vector3.up * markerHeight;
+        s.transform.localScale = Vector3.one * 0.15f;
+
+        // Hook the marker to HMD-based extinguish logic
+        var ext = s.GetComponent<OldMarkerExtinguish>();
+if (ext == null)
+{
+    Debug.LogWarning("OldMarker prefab missing OldMarkerExtinguish script.");
+}
+
+        else
+        {
+            Debug.LogWarning("OldMarker prefab missing OldMarkerExtinguish script.");
         }
     }
+}
+
 
     // ---------------- Debug drawing ----------------
     void OnDrawGizmosSelected()
