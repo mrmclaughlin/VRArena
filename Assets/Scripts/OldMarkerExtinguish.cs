@@ -9,6 +9,13 @@ public class OldMarkerExtinguish : MonoBehaviour
     [SerializeField] private bool extinguishOnce = true;
     [SerializeField] private float cooldownSeconds = 0.25f;
 
+    [Header("Prefab Swap (instead of extinguish)")]
+    [Tooltip("If assigned, swap to this prefab when player approaches instead of extinguishing.")]
+    public GameObject swapPrefab;
+    
+    [Tooltip("Destroy the original object after swapping.")]
+    public bool destroyOriginalOnSwap = true;
+
     [Header("Optional references")]
     public ParticleSystem[] flames;
     public Light[] lightsToToggle;
@@ -16,6 +23,7 @@ public class OldMarkerExtinguish : MonoBehaviour
     private Transform hmd;
     private bool _extinguished;
     private float _nextAllowedTime;
+    private GameObject _swappedObject;
 
     void Start()
     {
@@ -52,6 +60,14 @@ public class OldMarkerExtinguish : MonoBehaviour
         if (extinguishOnce && _extinguished) return;
         _extinguished = true;
 
+        // If swap prefab is assigned, use that instead of extinguishing
+        if (swapPrefab != null)
+        {
+            SwapToPrefab();
+            return;
+        }
+
+        // Original extinguish behavior
         foreach (var ps in flames)
         {
             if (!ps) continue;
@@ -63,6 +79,34 @@ public class OldMarkerExtinguish : MonoBehaviour
         {
             if (l) l.enabled = false;
         }
+    }
+
+    private void SwapToPrefab()
+    {
+        if (swapPrefab == null) return;
+
+        Transform parent = transform.parent;
+        Vector3 pos = transform.position;
+        Quaternion rot = transform.rotation;
+        Vector3 scale = transform.localScale;
+
+        // Instantiate the swap prefab
+        _swappedObject = Instantiate(swapPrefab, pos, rot, parent);
+        _swappedObject.transform.localScale = scale;
+        _swappedObject.name = transform.name.Replace("Lit", "Unlit").Replace("Candle", "Marker");
+
+        // Destroy original if requested
+        if (destroyOriginalOnSwap)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            // Just hide/disable the original
+            gameObject.SetActive(false);
+        }
+
+        Debug.Log($"Swapped marker prefab at {pos}");
     }
 
     public void Relight()

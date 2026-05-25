@@ -34,6 +34,21 @@ public class GridMazeHedgeBuilder : MonoBehaviour
     [Tooltip("Final exit is NORTH edge x cell (final segment only).")]
     public int exitX = 0;
 
+    [Header("Central Sanctuary (Final Goal Area)")]
+    [Tooltip("If true, final segment ends in a central open space instead of north edge.")]
+    public bool endInCenter = true;
+
+    [Tooltip("Radius of the open sanctuary area (in cells).")]
+    [Min(1)]
+    public int sanctuaryRadius = 3;
+
+    [Tooltip("Prefab to place around sanctuary edge (optional decoration).")]
+    public GameObject sanctuaryDecorationPrefab;
+
+    [Tooltip("Number of decorations to place around sanctuary edge.")]
+    [Min(0)]
+    public int sanctuaryDecorationCount = 8;
+
     [Header("Segment chaining")]
     [Tooltip("How many times to rebuild BEFORE the final open exit. Example: 5 means 5 rebuilds, then final maze with real exit.")]
     [Min(0)]
@@ -341,8 +356,16 @@ private void Shuffle(List<AudioClip> list)
         Vector2Int goalCell;
         if (isFinalSegment)
         {
-            // Final goal is the real exit on NORTH edge
-            goalCell = new Vector2Int(endpointB_NorthX, cellsY - 1);
+            if (endInCenter)
+            {
+                // Final goal is in the CENTER - create a sanctuary area
+                goalCell = new Vector2Int(cellsX / 2, cellsY / 2);
+            }
+            else
+            {
+                // Final goal is the real exit on NORTH edge
+                goalCell = new Vector2Int(endpointB_NorthX, cellsY - 1);
+            }
         }
         else
         {
@@ -418,12 +441,19 @@ private void Shuffle(List<AudioClip> list)
         if (spawnSolutionMarkers) SpawnSolutionMarkers();
 
         // Place trigger:
-        // - If final segment: trigger is at the GOAL cell (acts like “real exit reached”)
+        // - If final segment: trigger is at the GOAL cell (acts like "real exit reached")
         // - Else: trigger is placed triggerCellsBeforeGoal cells before goal (interior)
         PlaceSegmentTrigger(isFinalSegment);
 
+        // If final segment with center sanctuary, carve out the open space
+        if (isFinalSegment && endInCenter)
+        {
+            CarveSanctuary(goalCell, sanctuaryRadius);
+            PlaceSanctuaryDecorations(goalCell, sanctuaryRadius, sanctuaryDecorationCount);
+        }
+
         // After a successful Build, consume one-time constraints:
-        // Start cell is now “where you are” for next segment, so we always force start after first trigger.
+        // Start cell is now "where you are" for next segment, so we always force start after first trigger.
         // Desired direction is set when trigger is hit.
         useDesiredFirstStep = false;
 
@@ -483,7 +513,7 @@ private void Shuffle(List<AudioClip> list)
         Vector2Int dir = desiredFirstStepDir;
         if (!useDesiredFirstStep) dir = Vector2Int.up;
 
-        // Prefer far boundaries to keep “length” feeling
+        // Prefer far boundaries to keep "length" feeling
         if (dir == Vector2Int.up)
         {
             int x = Random.Range(0, cellsX);
@@ -752,6 +782,63 @@ private void Shuffle(List<AudioClip> list)
         return new Vector2Int(Mathf.Clamp(c.x, 0, cellsX - 1), Mathf.Clamp(c.y, 0, cellsY - 1));
     }
 
+    // ---------------- Sanctuary (Central Open Area) ----------------
+    void CarveSanctuary(Vector2Int center, int radius)
+    {
+        // Remove all walls within the sanctuary radius
+        for (int dy = -radius; dy <= radius; dy++)
+        {
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                int x = center.x + dx;
+                int y = center.y + dy;
+
+                if (x < 0 || x >= cellsX || y < 0 || y >= cellsY) continue;
+
+                float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                if (dist <= radius)
+                {
+                    // Open all walls for this cell
+                    walls[x, y] = 0;
+                }
+            }
+        }
+    }
+
+    void PlaceSanctuaryDecorations(Vector2Int center, int radius, int count)
+    {
+        if (sanctuaryDecorationPrefab == null || count == 0) return;
+
+        Transform rt = GetOrCreateRuntimeRoot();
+
+        // Place decorations in a circle around the sanctuary edge
+        for (int i = 0; i < count; i++)
+        {
+            float angle = (i / (float)count) * Mathf.PI * 2f;
+            float x = center.x + Mathf.Cos(angle) * radius;
+            float y = center.y + Mathf.Sin(angle) * radius;
+
+            int cellX = Mathf.RoundToInt(x);
+            int cellY = Mathf.RoundToInt(y);
+
+            if (cellX < 0 || cellX >= cellsX || cellY < 0 || cellY >= cellsY) continue;
+
+            Vector3 pos = CellCenterWorld(cellX, cellY);
+
+#if UNITY_EDITOR
+            GameObject dec = (!Application.isPlaying)
+                ? (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(sanctuaryDecorationPrefab, rt)
+                : Instantiate(sanctuaryDecorationPrefab, rt);
+#else
+            GameObject dec = Instantiate(sanctuaryDecorationPrefab, rt);
+#endif
+            dec.transform.position = pos;
+            dec.transform.rotation = Quaternion.Euler(0f, angle * Mathf.Rad2Deg, 0f);
+        }
+
+        Debug.Log($"Sanctuary decorations placed: {count} around radius {radius}");
+    }
+
    void PlaceSegmentTrigger(bool isFinalSegment)
 {
     if (solutionPathCells == null || solutionPathCells.Count < 2) return;
@@ -818,7 +905,7 @@ private void Shuffle(List<AudioClip> list)
         triggerMarkerObj.transform.position = new Vector3(triggerPos.x, origin.y + (h * 0.5f), triggerPos.z);
 
         // Fake "cone": tiny top radius by flattening X/Z heavily and leaving Y tall doesn't actually taper.
-        // Best cheap illusion is: make it a thin tall spike. You’ll still see it clearly.
+        // Best cheap illusion is: make it a thin tall spike. You'll still see it clearly.
         triggerMarkerObj.transform.localScale = new Vector3(r * 2f, h * 0.5f, r * 2f);
 
         triggerMarkerObj.SetActive(true);
