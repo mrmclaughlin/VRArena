@@ -1,129 +1,145 @@
 using UnityEngine;
 
-[RequireComponent(typeof(Collider))]
+/// <summary>
+/// Attached to each solution-path marker.
+///
+/// Inbound  phase: HMD enters radius → marker turns BLUE  (walked-past colour)
+/// Outbound phase: HMD enters radius → marker turns WHITE (restored colour)
+///
+/// No prefab swapping. No SetActive trickery. Just a colour change on the renderer.
+/// The GameObject is always active so Update() always runs.
+/// </summary>
 public class OldMarkerExtinguish : MonoBehaviour
 {
- 
-    [Header("Extinguish")]
-    [SerializeField] private float radius = 0.8f;
-    [SerializeField] private bool extinguishOnce = true;
-    [SerializeField] private float cooldownSeconds = 0.25f;
+    [Header("HMD trigger")]
+    public Transform hmd;
+    public float extinguishRadius = 0.8f;
+    public float cooldownSeconds  = 0.25f;
+    public bool  extinguishOnce   = true;
 
-    [Header("Prefab Swap (instead of extinguish)")]
-    [Tooltip("If assigned, swap to this prefab when player approaches instead of extinguishing.")]
-    public GameObject swapPrefab;
-    
-    [Tooltip("Destroy the original object after swapping.")]
-    public bool destroyOriginalOnSwap = true;
+    [Header("Colours")]
+    public Color inboundColor  = Color.white;
+    public Color outboundColor = new Color(0.2f, 0.4f, 1f); // blue
 
-    [Header("Optional references")]
-    public ParticleSystem[] flames;
-    public Light[] lightsToToggle;
+    // ------------------------------------------------------------------ //
+    //  Private state
+    // ------------------------------------------------------------------ //
 
-    private Transform hmd;
-    private bool _extinguished;
-    private float _nextAllowedTime;
-    private GameObject _swappedObject;
+    private float            _nextCheckTime = 0f;
+    private bool             _hasSwapped    = false;
+    private MazeJourneyPhase _phase         = MazeJourneyPhase.Inbound;
+    private Renderer[]       _renderers;
 
-    void Start()
-    {
-        // Auto-find camera at runtime
-        if (Camera.main != null)
-            hmd = Camera.main.transform;
-        else
-            Debug.LogWarning("HmdOldMarkerExtinguish: No Camera.main found.");
-    }
+    // ------------------------------------------------------------------ //
+    //  Unity lifecycle
+    // ------------------------------------------------------------------ //
 
     void Awake()
     {
-        if (flames == null || flames.Length == 0)
-            flames = GetComponentsInChildren<ParticleSystem>(true);
+        _renderers = GetComponentsInChildren<Renderer>(true);
+        SetColour(inboundColor);
     }
+
+    // ------------------------------------------------------------------ //
+    //  Public API called by GridMazeHedgeBuilder
+    // ------------------------------------------------------------------ //
+
+    public void SetSwapPrefab(GameObject prefab)
+    {
+        // No longer used — kept so the builder compiles without changes.
+    }
+
+    /// <summary>Explicitly set white regardless of prefab's baked material state.</summary>
+    public void ForceInboundColour()
+    {
+        _hasSwapped = false;
+        _phase      = MazeJourneyPhase.Inbound;
+        SetColour(inboundColor);
+    }
+
+    /// <summary>Called every Build() to set swap direction.</summary>
+    public void SetPhase(MazeJourneyPhase phase)
+    {
+        _phase = phase;
+        if (phase == MazeJourneyPhase.Outbound)
+            _hasSwapped = false; // re-arm for outbound pass
+    }
+
+    /// <summary>
+    /// Called by SpawnSolutionMarkersAsReturn() — marker starts blue (already walked inbound).
+    /// Arm for outbound so walking past turns it white.
+    /// </summary>
+    public void InitAsAlreadySwapped(GameObject ignored, MazeJourneyPhase phase)
+    {
+        _phase      = phase;
+        _hasSwapped = false;        // armed for outbound pass
+        SetColour(outboundColor);   // start blue — player hasn't walked back past yet
+    }
+
+    /// <summary>Full reset at loop start — restore white.</summary>
+    public void Relight()
+    {
+        _hasSwapped = false;
+        _phase      = MazeJourneyPhase.Inbound;
+        SetColour(inboundColor);
+    }
+
+    // ------------------------------------------------------------------ //
+    //  Update
+    // ------------------------------------------------------------------ //
 
     void Update()
     {
-        if (!Application.isPlaying) return;
-        if (hmd == null) return;
-        if (extinguishOnce && _extinguished) return;
-        if (Time.time < _nextAllowedTime) return;
-
-        float d = Vector3.Distance(hmd.position, transform.position);
-        if (d <= radius)
+        if (_hasSwapped && extinguishOnce) return;
+        if (hmd == null)
         {
-            Extinguish();
-            _nextAllowedTime = Time.time + cooldownSeconds;
-        }
-    }
-
-    public void Extinguish()
-    {
-        if (extinguishOnce && _extinguished) return;
-        _extinguished = true;
-
-        // If swap prefab is assigned, use that instead of extinguishing
-        if (swapPrefab != null)
-        {
-            SwapToPrefab();
+            if (Camera.main != null) hmd = Camera.main.transform;
             return;
         }
+        if (Time.time < _nextCheckTime) return;
 
-        // Original extinguish behavior
-        foreach (var ps in flames)
+        _nextCheckTime = Time.time + cooldownSeconds;
+
+        if (Vector3.Distance(hmd.position, transform.position) > extinguishRadius) return;
+
+        if (_phase == MazeJourneyPhase.Inbound)
         {
-            if (!ps) continue;
-            ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-            ps.Clear(true);
-        }
-
-        foreach (var l in lightsToToggle)
-        {
-            if (l) l.enabled = false;
-        }
-    }
-
-    private void SwapToPrefab()
-    {
-        if (swapPrefab == null) return;
-
-        Transform parent = transform.parent;
-        Vector3 pos = transform.position;
-        Quaternion rot = transform.rotation;
-        Vector3 scale = transform.localScale;
-
-        // Instantiate the swap prefab
-        _swappedObject = Instantiate(swapPrefab, pos, rot, parent);
-        _swappedObject.transform.localScale = scale;
-        _swappedObject.name = transform.name.Replace("Lit", "Unlit").Replace("Candle", "Marker");
-
-        // Destroy original if requested
-        if (destroyOriginalOnSwap)
-        {
-            Destroy(gameObject);
+            _hasSwapped = true;
+            SetColour(outboundColor); // turn blue
         }
         else
         {
-            // Just hide/disable the original
-            gameObject.SetActive(false);
+            _hasSwapped = true;
+            SetColour(inboundColor);  // turn white
         }
-
-        Debug.Log($"Swapped marker prefab at {pos}");
     }
 
-    public void Relight()
+    // ------------------------------------------------------------------ //
+    //  Colour helper
+    // ------------------------------------------------------------------ //
+
+    void SetColour(Color c)
     {
-        _extinguished = false;
+        if (_renderers == null)
+            _renderers = GetComponentsInChildren<Renderer>(true);
 
-        foreach (var ps in flames)
+        foreach (var r in _renderers)
         {
-            if (!ps) continue;
-            ps.Clear(true);
-            ps.Play(true);
+            // Works for standard, URP, and HDRP lit shaders
+            if (r.material.HasProperty("_Color"))
+                r.material.color = c;
+            else if (r.material.HasProperty("_BaseColor"))
+                r.material.SetColor("_BaseColor", c);
         }
+    }
 
-        foreach (var l in lightsToToggle)
-        {
-            if (l) l.enabled = true;
-        }
+    // ------------------------------------------------------------------ //
+    //  Gizmos
+    // ------------------------------------------------------------------ //
+
+    void OnDrawGizmosSelected()
+    {
+        Gizmos.color = (_phase == MazeJourneyPhase.Inbound) ? Color.white : Color.blue;
+        Gizmos.DrawWireSphere(transform.position, extinguishRadius);
     }
 }
-
