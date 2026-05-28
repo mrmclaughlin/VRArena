@@ -22233,7 +22233,7 @@ PrefabInstance:
     - target: {fileID: 1675664790505460305, guid: 12e7c6e2a052ca344a4b1b5616e1597c,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1693606386973646861, guid: 12e7c6e2a052ca344a4b1b5616e1597c,
         type: 3}
@@ -22404,16 +22404,16 @@ PrefabInstance:
         type: 3}
       propertyPath: m_GesturePerformed.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
-      objectReference: {fileID: 1313711688}
+      objectReference: {fileID: 87188112}
     - target: {fileID: 2272792351538558091, guid: 12e7c6e2a052ca344a4b1b5616e1597c,
         type: 3}
       propertyPath: m_GesturePerformed.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
-      value: Teleport
+      value: Recenter
       objectReference: {fileID: 0}
     - target: {fileID: 2272792351538558091, guid: 12e7c6e2a052ca344a4b1b5616e1597c,
         type: 3}
       propertyPath: m_GesturePerformed.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: TeleportPlayer, Assembly-CSharp
+      value: ForceRecenter, Assembly-CSharp
       objectReference: {fileID: 0}
     - target: {fileID: 2272792351538558091, guid: 12e7c6e2a052ca344a4b1b5616e1597c,
         type: 3}
@@ -23214,11 +23214,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_GesturePerformed.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
-      objectReference: {fileID: 87188112}
+      objectReference: {fileID: 87188110}
     - target: {fileID: 4103395466030174051, guid: 12e7c6e2a052ca344a4b1b5616e1597c,
         type: 3}
       propertyPath: m_GesturePerformed.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
-      value: Recenter
+      value: MoveUp
       objectReference: {fileID: 0}
     - target: {fileID: 4103395466030174051, guid: 12e7c6e2a052ca344a4b1b5616e1597c,
         type: 3}
@@ -23229,7 +23229,7 @@ PrefabInstance:
     - target: {fileID: 4103395466030174051, guid: 12e7c6e2a052ca344a4b1b5616e1597c,
         type: 3}
       propertyPath: m_GesturePerformed.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: ForceRecenter, Assembly-CSharp
+      value: XRRigMover, Assembly-CSharp
       objectReference: {fileID: 0}
     - target: {fileID: 4103395466030174051, guid: 12e7c6e2a052ca344a4b1b5616e1597c,
         type: 3}
@@ -24260,7 +24260,7 @@ PrefabInstance:
     - target: {fileID: 8130600444140132975, guid: 12e7c6e2a052ca344a4b1b5616e1597c,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8191049451063543937, guid: 12e7c6e2a052ca344a4b1b5616e1597c,
         type: 3}
@@ -24496,7 +24496,7 @@ PrefabInstance:
     - target: {fileID: 9011485694466931061, guid: 12e7c6e2a052ca344a4b1b5616e1597c,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 9040662904442759500, guid: 12e7c6e2a052ca344a4b1b5616e1597c,
         type: 3}
@@ -29421,7 +29421,7 @@ MonoBehaviour:
   exitX: 2
   useCenterGoal: 1
   clearingCellRadius: 1
-  rebuildsBeforeFinalEnd: 1
+  rebuildsBeforeFinalEnd: 4
   showSegmentTriggerMarker: 0
   triggerMarkerHeight: 10
   triggerMarkerBaseRadius: 0.5
