@@ -18,6 +18,16 @@ public class StudentProjectSpawner : MonoBehaviour
     [Tooltip("Drag student project prefabs here from Assets/Student Projects/projects")]
     public GameObject[] studentProjects;
 
+    [Header("Project Scale")]
+    [Tooltip("Uniform scale applied to each spawned student project")]
+    public float projectScale = 1f;
+
+    [Tooltip("Override uniform scale with per-axis control")]
+    public bool useNonUniformScale = false;
+
+    [Tooltip("Per-axis scale applied when Use Non Uniform Scale is enabled")]
+    public Vector3 projectScaleAxes = Vector3.one;
+
     [Header("Spawn Settings")]
     [Tooltip("Center point of the spawn area")]
     public Vector3 spawnAreaCenter = Vector3.zero;
@@ -96,9 +106,15 @@ public class StudentProjectSpawner : MonoBehaviour
             project.transform.SetParent(target.transform);
             project.transform.localPosition = Vector3.zero;
             project.transform.localRotation = Quaternion.identity;
+
+            // Apply scale
+            project.transform.localScale = useNonUniformScale
+                ? projectScaleAxes
+                : Vector3.one * projectScale;
+
             project.name = projectPrefab.name;
 
-            // Torch is a scene-root object — NOT parented to the target so it won't spin
+            // Torch sits at scene root so it does not spin with the target
             GameObject torch = Instantiate(torchPrefab,
                 spawnPos + Vector3.up * torchHeightOffset, Quaternion.identity);
             torch.name = $"Torch_{projectPrefab.name}";
