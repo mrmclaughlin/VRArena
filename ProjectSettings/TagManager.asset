@@ -12,6 +12,7 @@ TagManager:
   - SnowBall
   - Target
   - Bullet
+  - Dart
   layers:
   - Default
   - TransparentFX
