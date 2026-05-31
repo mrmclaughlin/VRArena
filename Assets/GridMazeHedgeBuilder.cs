@@ -8,7 +8,13 @@ public enum MazeJourneyPhase { Inbound, Outbound }
 [ExecuteAlways]
 public class GridMazeHedgeBuilder : MonoBehaviour
 {
-    [Header("References")]
+    [Header("Center Clearing Reveal")]
+     public GameObject centerRevealPrefab;
+     private GameObject _centerRevealInstance;
+	
+	
+	
+	[Header("References")]
     public Transform gymCenter;
     public Transform worldRoot;
     public GameObject hedgePrefab;
@@ -442,7 +448,26 @@ public class GridMazeHedgeBuilder : MonoBehaviour
         BuildWallsAsHedges(cellsX, cellsY);
         BuildSolutionWorldPointsFromCells();
         SpawnSolutionBallsIfNeeded();
+// --- Center reveal prefab ---
+bool showCenter = isFinalSegment
+                  && journeyPhase == MazeJourneyPhase.Inbound
+                  && useCenterGoal
+                  && centerRevealPrefab != null;
 
+if (showCenter)
+{
+    if (_centerRevealInstance == null)
+    {
+        _centerRevealInstance = Instantiate(centerRevealPrefab, GetOrCreateRuntimeRoot());
+    }
+    _centerRevealInstance.transform.position = CellCenterWorld(
+        cellsX / 2, cellsY / 2);           // same centerCell the maze uses
+    _centerRevealInstance.SetActive(true);
+}
+else if (_centerRevealInstance != null)
+{
+    _centerRevealInstance.SetActive(false);
+}
         if (spawnSolutionMarkers)
         {
             if (journeyPhase == MazeJourneyPhase.Inbound)

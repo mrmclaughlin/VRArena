@@ -24025,6 +24025,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4928002af92d61b4fbcefa99a94d9a90, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  centerRevealPrefab: {fileID: 4921530691876524060, guid: 9613f127c4654fd4ca17526faa6e34bb,
+    type: 3}
   gymCenter: {fileID: 1715126901}
   worldRoot: {fileID: 1217984389}
   hedgePrefab: {fileID: 1982940609632981958, guid: 588d9ad046a0bf14cbe375da4ba1a0d9,
