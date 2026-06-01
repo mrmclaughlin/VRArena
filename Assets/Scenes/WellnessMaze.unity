@@ -24049,7 +24049,7 @@ MonoBehaviour:
   exitX: 2
   useCenterGoal: 1
   clearingCellRadius: 1
-  rebuildsBeforeFinalEnd: 4
+  rebuildsBeforeFinalEnd: 1
   showSegmentTriggerMarker: 0
   triggerMarkerHeight: 10
   triggerMarkerBaseRadius: 0.5
