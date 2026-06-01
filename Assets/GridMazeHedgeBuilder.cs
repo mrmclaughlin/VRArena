@@ -11,7 +11,7 @@ public class GridMazeHedgeBuilder : MonoBehaviour
     [Header("Center Clearing Reveal")]
      public GameObject centerRevealPrefab;
      private GameObject _centerRevealInstance;
-	
+	public float centerRevealHeightOffset = 1.0f;   // add this
 	
 	
 	[Header("References")]
@@ -460,8 +460,7 @@ if (showCenter)
     {
         _centerRevealInstance = Instantiate(centerRevealPrefab, GetOrCreateRuntimeRoot());
     }
-    _centerRevealInstance.transform.position = CellCenterWorld(
-        cellsX / 2, cellsY / 2);           // same centerCell the maze uses
+ _centerRevealInstance.transform.position = CellCenterWorld(cellsX / 2, cellsY / 2)+ Vector3.up * centerRevealHeightOffset;   // same centerCell the maze uses
     _centerRevealInstance.SetActive(true);
 }
 else if (_centerRevealInstance != null)
