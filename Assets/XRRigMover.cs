@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
-using UnityEngine.XR.Interaction.Toolkit;
+
 
 public class XRRigMover : MonoBehaviour
 {
@@ -10,7 +10,7 @@ public class XRRigMover : MonoBehaviour
     public Transform head;
 
     [Header("XR Ray Interactor")]
-    public XRRayInteractor rayInteractor;
+    public UnityEngine.XR.Interaction.Toolkit.Interactors.XRRayInteractor rayInteractor;
 
     [Header("Movement Settings")]
     public float moveSpeed = 1.0f;

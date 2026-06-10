@@ -5,15 +5,13 @@ public class MazeEndTrigger : MonoBehaviour
 {
     public GridMazeHedgeBuilder builder;
     public Transform hmd;
-
     public float cooldownSeconds = 1.0f;
 
-    // The builder stores which cell this trigger represents (so it can continue from here)
     [HideInInspector]
     public Vector2Int triggerCell;
 
     private BoxCollider box;
-    private bool wasInside = false;
+    private bool  wasInside       = false;
     private float nextAllowedTime = -999f;
 
     private void Awake()
@@ -22,10 +20,14 @@ public class MazeEndTrigger : MonoBehaviour
         box.isTrigger = true;
     }
 
+    /// <summary>
+    /// Call this AFTER repositioning the trigger so wasInside and the cooldown
+    /// are evaluated against the new position, not the old one.
+    /// </summary>
     public void ForceOutside()
     {
-        wasInside = false;
-        nextAllowedTime = -999f;
+        wasInside       = false;
+        nextAllowedTime = -999f;   // clear any leftover cooldown from prior position
     }
 
     private void Update()
@@ -35,37 +37,34 @@ public class MazeEndTrigger : MonoBehaviour
 
         if (hmd == null)
         {
-            if (builder.hmd != null) hmd = builder.hmd;
-            else if (Camera.main != null) hmd = Camera.main.transform;
+            if (builder.hmd != null)       hmd = builder.hmd;
+            else if (Camera.main != null)  hmd = Camera.main.transform;
         }
         if (hmd == null) return;
 
         bool inside = IsWorldPointInsideBox(box, hmd.position);
 
-        if (inside && !wasInside)
+        if (inside && !wasInside && Time.time >= nextAllowedTime)
         {
-            if (Time.time >= nextAllowedTime)
-            {
-                nextAllowedTime = Time.time + Mathf.Max(0f, cooldownSeconds);
-                builder.NotifyReachedSegmentTrigger();
-            }
+            nextAllowedTime = Time.time + Mathf.Max(0f, cooldownSeconds);
+            builder.NotifyReachedSegmentTrigger();
         }
 
         wasInside = inside;
     }
-private void OnDrawGizmosSelected()
-{
-    var bc = GetComponent<BoxCollider>();
-    Gizmos.color = Color.magenta;
-    Gizmos.matrix = transform.localToWorldMatrix;
-    Gizmos.DrawWireCube(bc.center, bc.size);
-}
+
+    private void OnDrawGizmosSelected()
+    {
+        var bc = GetComponent<BoxCollider>();
+        Gizmos.color  = Color.magenta;
+        Gizmos.matrix = transform.localToWorldMatrix;
+        Gizmos.DrawWireCube(bc.center, bc.size);
+    }
 
     private static bool IsWorldPointInsideBox(BoxCollider bc, Vector3 worldPoint)
     {
         Vector3 localPoint = bc.transform.InverseTransformPoint(worldPoint) - bc.center;
-        Vector3 half = bc.size * 0.5f;
-
+        Vector3 half       = bc.size * 0.5f;
         return Mathf.Abs(localPoint.x) <= half.x
             && Mathf.Abs(localPoint.y) <= half.y
             && Mathf.Abs(localPoint.z) <= half.z;

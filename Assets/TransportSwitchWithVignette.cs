@@ -15,7 +15,7 @@ namespace UnityEngine.XR.Interaction.Toolkit
         [SerializeField] bool startWithAOn = true;
 
         [Header("Vignette")]
-        [SerializeField] TunnelingVignetteController vignetteController;
+        [SerializeField] UnityEngine.XR.Interaction.Toolkit.Locomotion.Comfort.TunnelingVignetteController vignetteController;
         [SerializeField] TransportVignetteProvider transportProvider;
 
         [Header("Timing")]

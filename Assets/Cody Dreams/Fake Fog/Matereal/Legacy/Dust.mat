@@ -8,7 +8,8 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Dust
-  m_Shader: {fileID: -6465566751694194690, guid: dd73a828c5c73fc4ab56ae753e8494e0, type: 3}
+  m_Shader: {fileID: -6465566751694194690, guid: dd73a828c5c73fc4ab56ae753e8494e0,
+    type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
@@ -101,7 +102,7 @@ Material:
     - _Displacement_Amplitute: 2
     - _Displacement_noise: 10
     - _DstBlend: 1
-    - _DstBlendAlpha: 0
+    - _DstBlendAlpha: 1
     - _EnvironmentReflections: 1
     - _Fog_Density: 1.8
     - _Fog_Fade_In_Dis: 10
