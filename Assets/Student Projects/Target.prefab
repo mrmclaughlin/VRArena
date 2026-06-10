@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 415872960490522112}
   - component: {fileID: 2346324460634378232}
+  - component: {fileID: 5212612914136138533}
   m_Layer: 0
   m_Name: Target
   m_TagString: Untagged
@@ -27,7 +28,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0.33253, y: 0.045700002, z: -0.004940003}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1.5, y: 1.5, z: 1.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -56,3 +57,23 @@ MonoBehaviour:
   randomizeSpin: 0
   randomSpeedMin: 20
   randomSpeedMax: 120
+--- !u!114 &5212612914136138533
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2897312575134959452}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac3184fbd01f67045a9f047e90a4aeae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BoundedMover
+  centerTransform: {fileID: 6066158009225084631, guid: ac234b4c7acb91a4e8b9d026b26d9742,
+    type: 3}
+  rangeX: 10
+  rangeY: 0
+  rangeZ: 6
+  moveSpeed: 0.5
+  waypointRadius: 0.2
+  changeInterval: 4

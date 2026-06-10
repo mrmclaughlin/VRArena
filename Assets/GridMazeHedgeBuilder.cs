@@ -8,7 +8,11 @@ public enum MazeJourneyPhase { Inbound, Outbound }
 [ExecuteAlways]
 public class GridMazeHedgeBuilder : MonoBehaviour
 {
-    [Header("References")]
+    
+	
+	
+	
+[Header("References")]
     public Transform gymCenter;
     public Transform worldRoot;
     public GameObject hedgePrefab;
