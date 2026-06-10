@@ -410,7 +410,7 @@ namespace Meta.XR.BuildingBlocks.Editor
         {
             RefreshBlockList();
 #if OVR_BB_DRAGANDDROP
-            DragAndDrop.AddDropHandler(SceneDropHandler);
+            DragAndDrop.AddDropHandlerV2(SceneDropHandler);
             DragAndDrop.AddDropHandler(HierarchyDropHandler);
 #endif // OVR_BB_DRAGANDDROP
             wantsMouseMove = true;
@@ -426,7 +426,7 @@ namespace Meta.XR.BuildingBlocks.Editor
         private void OnDisable()
         {
 #if OVR_BB_DRAGANDDROP
-            DragAndDrop.RemoveDropHandler(SceneDropHandler);
+            DragAndDrop.RemoveDropHandlerV2(SceneDropHandler);
             DragAndDrop.RemoveDropHandler(HierarchyDropHandler);
 #endif // OVR_BB_DRAGANDDROP
         }
