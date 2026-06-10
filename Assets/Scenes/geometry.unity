@@ -22574,6 +22574,9 @@ MonoBehaviour:
   - {fileID: -1060203645927375669, guid: b8e6af3eeae6b8c4380e469089091743, type: 3}
   - {fileID: -1060203645927375669, guid: ce1f66d3bcc675943bc4478a1ddd41f4, type: 3}
   - {fileID: -1060203645927375669, guid: 05d69ef154337db47ac70a93568d482b, type: 3}
+  - {fileID: -1060203645927375669, guid: 8b963007d5edf9948b6c73e73b18202c, type: 3}
+  - {fileID: -1060203645927375669, guid: c9b15415eb63c4a4cad4f6b361dcdbcb, type: 3}
+  - {fileID: -1060203645927375669, guid: 8b963007d5edf9948b6c73e73b18202c, type: 3}
   projectScale: 1
   useNonUniformScale: 0
   projectScaleAxes: {x: 1, y: 1, z: 1}
@@ -44497,6 +44500,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: GymCenter
       objectReference: {fileID: 0}
+    - target: {fileID: 3514585396190652098, guid: ac234b4c7acb91a4e8b9d026b26d9742,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6066158009225084631, guid: ac234b4c7acb91a4e8b9d026b26d9742,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -44505,7 +44513,7 @@ PrefabInstance:
     - target: {fileID: 6066158009225084631, guid: ac234b4c7acb91a4e8b9d026b26d9742,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 6066158009225084631, guid: ac234b4c7acb91a4e8b9d026b26d9742,
         type: 3}
